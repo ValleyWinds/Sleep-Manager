@@ -1,8 +1,30 @@
 # 麦麦晚安睡眠管理
 
-声明：本插件主要由 Codex-5.5 生成
+> 本仓库是 [RaTaiHok/goodnight_sleep_manager](https://github.com/RaTaiHok/goodnight_sleep_manager)（作者 [RaTaiHok](https://github.com/RaTaiHok) / Neko_RTHsama）的 fork，在上游 v1.1.3（2026-05-17）基础上延续维护。
+>
+> 声明：本插件主要由 Codex-5.5 生成。
 
 让 Bot 在合适时间、并且自己确认要睡后进入临时睡眠状态。睡眠期间可以暂停新消息、表达学习、记忆写回、Planner 结果和后续出站消息，避免 Bot 半夜继续被拉起来聊天。
+
+## 兼容性
+
+| 项目 | 要求 |
+| --- | --- |
+| 主程序 `host_application` | `>= 1.0.0`，`<= 1.9.0` |
+| 插件 SDK | `>= 2.4.0`，`<= 2.99.99` |
+| 第三方依赖 | 无 |
+| 声明能力 | `send.text` / `llm.generate` / `config.get` |
+
+上游 v1.1.3 的清单把主程序版本上限固定在 `1.0.0`，主程序高于该版本时插件会被判定不兼容而无法加载；本仓库已将该上限放开到 `1.9.0`。
+
+## 安装
+
+```bash
+cd <你的 MaiBot 目录>/plugins
+git clone https://github.com/ValleyWinds/Sleep-Manager.git goodnight_sleep_manager
+```
+
+目录名建议保持 `goodnight_sleep_manager`：睡眠状态数据路径（`data/plugins/goodnight_sleep_manager/`）与主程序 Prompt 文件名都沿用了这个名字，已有配置和睡眠状态可以继续沿用。后续更新在插件目录内 `git pull` 即可。
 
 ## 核心行为
 
@@ -130,6 +152,24 @@ AI 判定模板会在插件加载时同步到主程序 Prompt 目录，并注册
 
 当用户在允许入睡时间内催睡时，插件不会强制 Bot 立刻睡觉。它只会提醒 Planner 当前已经落在配置窗口内，是否说晚安入睡仍由 Bot 根据上下文自己决定。
 
+## 依赖的主程序 Hook
+
+插件通过以下 Hook 实现拦截，全部为 `BLOCKING` 模式：
+
+| Hook | 顺序 | 作用 |
+| --- | --- | --- |
+| `send_service.after_build_message` | LATE | 检测 Bot 出站短句是否表达自己要睡 |
+| `send_service.before_send` | EARLY | 睡眠后拦截后续出站消息（触发入睡的那条会放行） |
+| `chat.receive.before_process` | EARLY | 睡眠期间尽早拦截入站消息 |
+| `chat.receive.after_process` | EARLY | 二次拦截，阻止消息进入命令与 Maisaka 主链路 |
+| `expression.learn.after_extract` | EARLY | 睡眠期间暂停表达学习提取 |
+| `expression.learn.before_upsert` | EARLY | 睡眠期间阻止表达学习写库 |
+| `maisaka.planner.before_request` | EARLY | 睡眠期间清空 Planner 工具与请求内容 |
+| `maisaka.planner.after_response` | LATE | 睡眠期间清空 Planner 响应与工具调用 |
+| `memory.automation.before_enqueue` | EARLY | 睡眠期间暂停自动记忆写回入队，**条件注册** |
+
+最后一项是条件注册的：插件在加载时会探测主程序是否提供 `memory.automation.before_enqueue`，没有就自动跳过该 HookHandler（避免整个插件加载失败），此时“暂停记忆写入”不生效。
+
 ## 插件结构
 
 ```text
@@ -153,9 +193,10 @@ goodnight_sleep_manager/
 ├─ defaults.py             默认规则和配置数据
 ├─ prompts/                可同步到主程序 Prompt 页面的默认模板
 │  └─ zh-CN/
-│     ├─ goodnight_sleep_confirmation.prompt
-│     └─ goodnight_sleep_confirmation.meta.toml
+│     └─ goodnight_sleep_confirmation.prompt
 ├─ i18n/                   插件基础国际化文本
+│  ├─ zh-CN.json
+│  └─ en-US.json
 ├─ README.md               使用说明
 └─ LICENSE                 开源许可证
 ```

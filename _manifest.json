@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "1.1.3",
+  "version": "1.1.4",
   "name": "晚安睡眠管理",
   "description": "当 Bot 在合适时间主动说出晚安或准备睡觉时，进入临时睡眠状态，并在睡眠期间暂停新消息、表达学习、Planner 结果和出站消息",
   "author": {
@@ -9,10 +9,10 @@
   },
   "license": "GPL-v3.0-or-later",
   "urls": {
-    "repository": "https://github.com/RaTaiHok/goodnight_sleep_manager",
-    "homepage": "https://github.com/RaTaiHok/goodnight_sleep_manager",
-    "documentation": "https://github.com/RaTaiHok/goodnight_sleep_manager",
-    "issues": "https://github.com/RaTaiHok/goodnight_sleep_manager/issues"
+    "repository": "https://github.com/ValleyWinds/Sleep-Manager",
+    "homepage": "https://github.com/ValleyWinds/Sleep-Manager",
+    "documentation": "https://github.com/ValleyWinds/Sleep-Manager",
+    "issues": "https://github.com/ValleyWinds/Sleep-Manager/issues"
   },
   "host_application": {
     "min_version": "1.0.0",
