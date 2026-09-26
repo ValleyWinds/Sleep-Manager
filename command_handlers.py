@@ -146,7 +146,10 @@ class SleepCommandHandlersMixin:
             f"生效作息: {schedule_source}"
         )
         await self.ctx.send.text(message, stream_id)
-        return True, message, True
+        # 拦截位必须为 False：放行这条消息才能触发 Planner，
+        # planner.before_request 才有机会注入催睡上下文（详见 core_mixin 的
+        # _build_pending_sleep_request_planner_context）。拦截会让催睡引导失效。
+        return True, message, False
 
     @Command("sleep_force", description="无视作息窗口让晚安睡眠管理立即入睡", pattern=r"^/sleep_force\s*$")
     async def handle_sleep_force_command(
