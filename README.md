@@ -1,6 +1,6 @@
 # 麦麦晚安睡眠管理
 
-> 本仓库是 [goodnight_sleep_manager](https://github.com/RaTaiHok/goodnight_sleep_manager)（作者 Neko_RTHsama）的Fork，在上游 v1.1.3（2026-05-17）基础上延续维护。
+> 本仓库是 [goodnight_sleep_manager](https://github.com/RaTaiHok/goodnight_sleep_manager)（作者 RaTaiHok）的Fork，在上游 v1.1.3（2026-05-17）基础上延续维护。
 >
 > Copyright (C) 2026 RaTaiHok，以 GPL-3.0 许可证发布。
 
