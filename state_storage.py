@@ -12,7 +12,10 @@ from .state import SleepRecord
 PERSISTENCE_VERSION = 2
 GLOBAL_SCOPE_KEY = "global"
 STATE_FILENAME = "sleep_state.json"
-LEGACY_PLUGIN_DIR_NAME = "goodnight_sleep_manager"
+# 迁移来源目录（按优先级）：曾用过的旧插件 ID 目录、上游版本硬编码目录
+LEGACY_PLUGIN_DIR_NAMES = ("local.goodnight-sleep-manager", "goodnight_sleep_manager")
+# 未注入数据目录时的回退目录（与上游行为保持一致）
+FALLBACK_PLUGIN_DIR_NAME = "goodnight_sleep_manager"
 MIGRATION_MARKER_FILENAME = ".legacy_migration_done"
 
 _data_dir: Path | None = None
@@ -26,16 +29,19 @@ def set_data_dir(data_dir: Path | str | None) -> None:
     _data_dir = Path(normalized) if normalized else None
 
 
-def get_legacy_data_dir() -> Path:
-    """返回旧版本硬编码使用的数据目录"""
+def get_legacy_data_dirs() -> list[Path]:
+    """返回历史版本可能写过数据的目录，按优先级排列"""
 
-    return Path(__file__).resolve().parents[2] / "data" / "plugins" / LEGACY_PLUGIN_DIR_NAME
+    plugins_root = Path(__file__).resolve().parents[2] / "data" / "plugins"
+    return [plugins_root / name for name in LEGACY_PLUGIN_DIR_NAMES]
 
 
 def get_plugin_data_dir() -> Path:
-    """返回插件数据目录；未注入时退回旧路径，保证脱离宿主也能工作"""
+    """返回插件数据目录；未注入时退回上游旧路径，保证脱离宿主也能工作"""
 
-    return _data_dir if _data_dir is not None else get_legacy_data_dir()
+    if _data_dir is not None:
+        return _data_dir
+    return get_legacy_data_dirs()[-1]
 
 
 def get_sleep_state_path() -> Path:
@@ -45,15 +51,15 @@ def get_sleep_state_path() -> Path:
 
 
 def migrate_legacy_data_files() -> list[str]:
-    """把旧硬编码目录里的数据文件搬到插件数据目录
+    """把历史目录里的数据文件搬到插件数据目录
 
     只做一次性搬迁：在插件数据目录写下标记文件，避免用户清空新状态后又被旧文件覆盖。
     迁移过程只做复制，不删除旧目录里的任何文件。
     """
 
-    legacy_dir = get_legacy_data_dir()
     target_dir = get_plugin_data_dir()
-    if legacy_dir == target_dir:
+    legacy_dirs = get_legacy_data_dirs()
+    if target_dir in legacy_dirs:
         return []
 
     marker_path = target_dir / MIGRATION_MARKER_FILENAME
@@ -61,7 +67,9 @@ def migrate_legacy_data_files() -> list[str]:
         return []
 
     migrated: list[str] = []
-    if legacy_dir.is_dir():
+    for legacy_dir in legacy_dirs:
+        if not legacy_dir.is_dir():
+            continue
         for source_path in sorted(legacy_dir.rglob("*")):
             if not source_path.is_file():
                 continue
@@ -74,7 +82,7 @@ def migrate_legacy_data_files() -> list[str]:
                 shutil.copy2(source_path, target_path)
             except Exception:
                 continue
-            migrated.append(str(relative_path))
+            migrated.append(f"{legacy_dir.name}/{relative_path.as_posix()}")
 
     try:
         target_dir.mkdir(parents=True, exist_ok=True)
