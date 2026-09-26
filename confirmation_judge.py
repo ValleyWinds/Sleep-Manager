@@ -1,13 +1,11 @@
 """使用 LLM 判断 Bot 出站消息是否是在确认自己要睡觉"""
 
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 import asyncio
 import re
 import time
-
-from src.common.prompt_i18n import load_prompt
 
 from .message_utils import normalize_text
 
@@ -16,12 +14,25 @@ NOT_SLEEP_DECISION = "NOT_SLEEP"
 UNSURE_DECISION = "UNSURE"
 PROMPT_NAME = "goodnight_sleep_confirmation"
 PROMPT_FILENAME = f"{PROMPT_NAME}.prompt"
-META_FILENAME = f"{PROMPT_NAME}.meta.toml"
 SUPPORTED_PROMPT_LOCALES = ("zh-CN",)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PLUGIN_PROMPTS_ROOT = Path(__file__).resolve().parent / "prompts"
 HOST_PROMPTS_ROOT = PROJECT_ROOT / "prompts"
+
+
+def _load_host_prompt_loader() -> Callable[..., str] | None:
+    """加载主程序的 Prompt 读取函数，不可用时返回 None
+
+    插件运行在独立进程里，拿不到主程序的 PromptManager 单例，因此这里只借用主程序的
+    模板读取函数解析已经同步到 prompts/ 目录的模板文件；失败时退回内置模板。
+    """
+
+    try:
+        from src.common.prompt_i18n import load_prompt
+    except Exception:
+        return None
+    return load_prompt
 
 
 def ensure_sleep_confirmation_prompt_files(logger: Any | None = None) -> None:
@@ -31,25 +42,6 @@ def ensure_sleep_confirmation_prompt_files(logger: Any | None = None) -> None:
         source_dir = PLUGIN_PROMPTS_ROOT / locale
         target_dir = HOST_PROMPTS_ROOT / locale
         _copy_default_file(source_dir / PROMPT_FILENAME, target_dir / PROMPT_FILENAME, logger)
-        _copy_default_file(source_dir / META_FILENAME, target_dir / META_FILENAME, logger)
-    register_sleep_confirmation_prompt(logger)
-
-
-def register_sleep_confirmation_prompt(logger: Any | None = None) -> None:
-    """把 AI 入睡确认 Prompt 注册到主程序 PromptManager"""
-
-    try:
-        from src.prompt.prompt_manager import Prompt, prompt_manager
-
-        template = load_prompt(PROMPT_NAME, prompts_root=HOST_PROMPTS_ROOT)
-        prompt = Prompt(prompt_name=PROMPT_NAME, template=template)
-        if PROMPT_NAME in prompt_manager.prompts:
-            prompt_manager.replace_prompt(prompt, need_save=False)
-        else:
-            prompt_manager.add_prompt(prompt, need_save=False)
-    except Exception as exc:
-        if logger is not None:
-            logger.warning(f"注册 AI 入睡确认 Prompt 失败: error={exc}")
 
 
 def render_sleep_confirmation_prompt(
@@ -71,7 +63,10 @@ def render_sleep_confirmation_prompt(
         "bot_message": bot_message,
     }
     try:
-        return load_prompt(PROMPT_NAME, prompts_root=HOST_PROMPTS_ROOT, **context)
+        loader = _load_host_prompt_loader()
+        if loader is None:
+            return _render_fallback_sleep_confirmation_prompt(**context)
+        return loader(PROMPT_NAME, prompts_root=HOST_PROMPTS_ROOT, **context)
     except Exception as exc:
         if logger is not None:
             logger.warning(f"AI 入睡确认 Prompt 加载失败，使用内置兜底: error={exc}")

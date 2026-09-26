@@ -22,7 +22,7 @@ class PluginSectionConfig(PluginConfigBase):
     __ui_order__ = 0
 
     enabled: bool = Field(default=True, description="是否启用晚安睡眠管理")
-    config_version: str = Field(default="1.9.2", description="配置版本")
+    config_version: str = Field(default="2.0.0", description="配置版本")
 
 
 class TriggerConfig(PluginConfigBase):
@@ -174,18 +174,17 @@ class SleepControlConfig(PluginConfigBase):
 
     block_inbound_messages: bool = Field(default=True, description="睡眠期间拦截入站消息主链路")
     block_expression_learning: bool = Field(default=True, description="睡眠期间暂停表达学习写入")
-    block_memory_automation: bool = Field(default=True, description="睡眠期间暂停自动记忆写回入队")
     block_outbound_messages: bool = Field(default=True, description="睡眠期间拦截后续出站消息")
     planner_control_enabled: bool = Field(default=True, description="睡眠期间清空 Planner 工具并丢弃 Planner 响应")
     control_commands_enabled: bool = Field(
         default=True,
-        description="允许 /sleep_status、/sleep_wake 和 /sleep_wakeall 控制命令",
+        description="允许 /sleep_status、/sleep_wake 和 /sleep_wake_all 控制命令",
     )
     persist_sleep_state: bool = Field(default=True, description="重启后恢复未过期的睡眠状态")
     natural_wake_enabled: bool = Field(default=True, description="到达预计醒来时间后由后台任务自动唤醒")
     force_sleep_commands_enabled: bool = Field(
         default=True,
-        description="允许 /sleep_now、/sleep_force 和 /sleep_forceall 管理命令",
+        description="允许 /sleep_now、/sleep_force 和 /sleep_force_all 管理命令",
     )
     admin_user_ids: List[str] = Field(default_factory=list, description="允许使用管理入睡命令的用户 ID；留空时不限制")
 

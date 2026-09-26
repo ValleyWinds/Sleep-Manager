@@ -25,6 +25,7 @@ class SleepState:
 
     sleep_records: Dict[str, SleepRecord] = field(default_factory=dict)
     session_scope_keys: Dict[str, str] = field(default_factory=dict)
+    session_group_ids: Dict[str, str] = field(default_factory=dict)
     last_any_activity_by_scope: Dict[str, float] = field(default_factory=dict)
     last_bot_activity_by_scope: Dict[str, float] = field(default_factory=dict)
     topic_grace_until_by_scope: Dict[str, float] = field(default_factory=dict)

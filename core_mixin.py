@@ -5,9 +5,9 @@ from time import monotonic
 from typing import Any
 
 import asyncio
+import itertools
 
-from src.chat.message_receive.chat_manager import chat_manager
-
+from .context_items import extract_item_tool_names
 from .confirmation_judge import (
     NOT_SLEEP_DECISION,
     SLEEP_DECISION,
@@ -35,6 +35,7 @@ from .state_storage import clear_persisted_sleep_state, load_persisted_sleep_rec
 ALL_SLEEP_SCOPE = "all"
 GLOBAL_SLEEP_SCOPE = "global"
 QUIET_PLANNER_TOOL_NAMES = {"no_action", "no_plan", "no_react", "no_reply", "finish", "wait", "continue"}
+_SLEEP_REVIEW_TASK_COUNTER = itertools.count(1)
 
 
 class SleepCoreMixin:
@@ -43,6 +44,7 @@ class SleepCoreMixin:
     _state: SleepState
     _idle_sleep_task: asyncio.Task | None
     _natural_wake_task: asyncio.Task | None
+    _sleep_review_tasks: set[asyncio.Task]
 
     def _init_sleep_state(self) -> None:
         """初始化插件内存状态"""
@@ -50,6 +52,7 @@ class SleepCoreMixin:
         self._state = SleepState()
         self._idle_sleep_task = None
         self._natural_wake_task = None
+        self._sleep_review_tasks = set()
 
     def _enabled(self) -> bool:
         """返回插件是否启用"""
@@ -196,9 +199,10 @@ class SleepCoreMixin:
         except Exception as exc:
             self._get_logger().warning(f"清理持久化睡眠状态失败: {exc}")
 
-    def _handle_plugin_unload(self) -> None:
+    async def _handle_plugin_unload(self) -> None:
         """插件卸载时保留未过期睡眠状态，便于重启后恢复"""
 
+        await self._stop_sleep_review_tasks()
         self._prune_expired_sleep_records()
         if self._state.sleep_records:
             if self.config.control.persist_sleep_state:
@@ -443,6 +447,7 @@ class SleepCoreMixin:
     def _mark_sleep_activity(self, message: dict[str, Any]) -> None:
         """记录当前作用域最近一次 Bot 参与和可见活动时间"""
 
+        self._remember_session_group_from_message(message)
         if not self._enabled() or not self.config.idle_sleep.enabled:
             return
         if self._is_sleeping(message):
@@ -458,6 +463,7 @@ class SleepCoreMixin:
     def _mark_inbound_sleep_activity(self, message: dict[str, Any]) -> None:
         """记录入站消息活动，只影响完全安静计时"""
 
+        self._remember_session_group_from_message(message)
         if not self._enabled() or not self.config.idle_sleep.enabled:
             return
         if self._is_sleeping(message):
@@ -581,24 +587,10 @@ class SleepCoreMixin:
         return self.config.idle_sleep.mention_extends_grace and message_mentions_bot(message)
 
     @staticmethod
-    def _extract_planner_tool_names(raw_tool_calls: Any) -> list[str]:
-        """从 Planner Hook 的工具调用载荷中提取工具名"""
+    def _extract_planner_tool_names(raw_output_items: Any) -> list[str]:
+        """从 Planner 输出 Items 中提取工具名"""
 
-        if not isinstance(raw_tool_calls, list):
-            return []
-
-        tool_names: list[str] = []
-        for tool_call in raw_tool_calls:
-            if not isinstance(tool_call, dict):
-                continue
-
-            raw_name = tool_call.get("name") or tool_call.get("tool_name")
-            function_data = tool_call.get("function")
-            if not raw_name and isinstance(function_data, dict):
-                raw_name = function_data.get("name")
-            if isinstance(raw_name, str) and raw_name.strip():
-                tool_names.append(raw_name.strip())
-        return tool_names
+        return extract_item_tool_names(raw_output_items)
 
     def _active_sleep_record(
         self,
@@ -740,8 +732,13 @@ class SleepCoreMixin:
             self._get_logger().warning("无法生成睡醒回顾：当前没有运行中的事件循环")
             return
 
-        task_name = f"goodnight_sleep_review_{sleep_record.scope_key.replace(':', '_')}"
-        loop.create_task(self._run_sleep_review(sleep_record), name=task_name)
+        task_name = (
+            f"goodnight_sleep_review_{sleep_record.scope_key.replace(':', '_')}"
+            f"_{next(_SLEEP_REVIEW_TASK_COUNTER)}"
+        )
+        task = loop.create_task(self._run_sleep_review(sleep_record), name=task_name)
+        self._sleep_review_tasks.add(task)
+        task.add_done_callback(self._sleep_review_tasks.discard)
 
     async def _run_sleep_review(self, sleep_record: SleepRecord) -> None:
         """执行睡醒回顾后台任务，避免异常泄漏到事件循环。"""
@@ -750,6 +747,18 @@ class SleepCoreMixin:
             await generate_sleep_review(self.ctx, sleep_record, self.config.sleep_review, self._get_logger())
         except Exception as exc:
             self._get_logger().warning(f"生成睡醒回顾后台任务失败: scope={sleep_record.scope_label} error={exc}")
+
+    async def _stop_sleep_review_tasks(self) -> None:
+        """停止仍在运行的睡醒回顾后台任务"""
+
+        pending_tasks = [task for task in self._sleep_review_tasks if not task.done()]
+        self._sleep_review_tasks.clear()
+        if not pending_tasks:
+            return
+
+        for task in pending_tasks:
+            task.cancel()
+        await asyncio.gather(*pending_tasks, return_exceptions=True)
 
     def _should_block_learning(self, session_id: Any = "") -> bool:
         """判断是否需要暂停表达学习"""
@@ -760,31 +769,6 @@ class SleepCoreMixin:
             and self.config.control.block_expression_learning
             and self._is_sleeping(session_id=normalized_session_id)
         )
-
-    def _should_block_memory_automation(
-        self,
-        session_id: Any = "",
-        group_id: Any = "",
-        message: dict[str, Any] | None = None,
-    ) -> bool:
-        """判断是否需要暂停自动记忆写回任务入队"""
-
-        if not self._enabled() or not self.config.control.block_memory_automation:
-            return False
-
-        if message is not None and self._is_sleeping(message):
-            return True
-
-        normalized_group_id = str(group_id or "").strip()
-        if normalized_group_id:
-            scope_key = self._sleep_scope_for_group_id(normalized_group_id)[0]
-            return self._is_sleeping(scope_key=scope_key)
-
-        normalized_session_id = str(session_id or "").strip()
-        if normalized_session_id:
-            return self._is_sleeping(session_id=normalized_session_id)
-
-        return self._is_sleeping()
 
     def _should_control_planner(self, session_id: Any = "") -> bool:
         """判断是否需要启用 Planner 兜底保护"""
@@ -991,19 +975,37 @@ class SleepCoreMixin:
 
         return bool(self.config.group_schedule.independent_default_scopes)
 
+    def _remember_session_group_from_message(self, message: dict[str, Any] | None) -> None:
+        """记住会话与群号的对应关系，供只带 session_id 的 Hook 使用"""
+
+        if message is None:
+            return
+
+        session_id = message_session_id(message)
+        group_id = message_group_id(message)
+        if session_id and group_id:
+            self._state.session_group_ids[session_id] = group_id
+
     def _group_id_for_session_id(self, session_id: str) -> str:
-        """通过已注册聊天流解析群号。"""
+        """解析会话对应的群号
+
+        插件运行在独立进程里，拿不到主程序的聊天流注册表，因此只使用插件在消息
+        Hook 中自己记下的映射，以及当前睡眠记录里已经保存的群号。
+        """
 
         normalized_session_id = str(session_id or "").strip()
         if not normalized_session_id:
             return ""
 
-        try:
-            session = chat_manager.get_existing_session_by_session_id(normalized_session_id)
-        except Exception as exc:
-            self._get_logger().warning(f"解析会话群号失败: session_id={normalized_session_id} error={exc}")
-            return ""
-        return str(getattr(session, "group_id", "") or "").strip() if session is not None else ""
+        remembered_group_id = self._state.session_group_ids.get(normalized_session_id, "")
+        if remembered_group_id:
+            return remembered_group_id
+
+        scope_key = self._state.session_scope_keys.get(normalized_session_id, "")
+        record = self._state.sleep_records.get(scope_key) if scope_key else None
+        if record is not None and record.session_id == normalized_session_id:
+            return record.group_id
+        return ""
 
     def _sleep_scope_for_group_id(self, group_id: str) -> tuple[str, str]:
         """根据群号决定睡眠状态作用域"""
@@ -1022,15 +1024,9 @@ class SleepCoreMixin:
         if not normalized_session_id:
             return "默认聊天流"
 
-        try:
-            session = chat_manager.get_existing_session_by_session_id(normalized_session_id)
-        except Exception:
-            session = None
-
-        for attr_name in ("chat_name", "name", "display_name", "session_name"):
-            raw_label = getattr(session, attr_name, "") if session is not None else ""
-            if isinstance(raw_label, str) and raw_label.strip():
-                return raw_label.strip()
+        group_id = self._group_id_for_session_id(normalized_session_id)
+        if group_id:
+            return f"群 {group_id}"
         return f"聊天流 {normalized_session_id}"
 
     def _group_schedule_for_group_id(self, group_id: str) -> Any | None:
@@ -1105,9 +1101,9 @@ class SleepCoreMixin:
     def _control_command_names(self) -> set[str]:
         """返回睡眠期间允许穿透入站拦截的控制命令"""
 
-        command_names = {"/sleep_status", "/sleep_wake", "/sleep_wakeall"}
+        command_names = {"/sleep_status", "/sleep_wake", "/sleep_wake_all"}
         if self.config.control.force_sleep_commands_enabled:
-            command_names.update({"/sleep_now", "/sleep_force", "/sleep_forceall"})
+            command_names.update({"/sleep_now", "/sleep_force", "/sleep_force_all"})
         return command_names
 
     def _set_pending_sleep_request(self, message: dict[str, Any], text: str) -> None:

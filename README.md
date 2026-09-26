@@ -1,10 +1,8 @@
 # 麦麦晚安睡眠管理
 
 > 本仓库是 [RaTaiHok/goodnight_sleep_manager](https://github.com/RaTaiHok/goodnight_sleep_manager)（作者 [RaTaiHok](https://github.com/RaTaiHok) / Neko_RTHsama）的 fork，在上游 v1.1.3（2026-05-17）基础上延续维护。
->
-> 声明：本插件主要由 Codex-5.5 生成。
 
-让 Bot 在合适时间、并且自己确认要睡后进入临时睡眠状态。睡眠期间可以暂停新消息、表达学习、记忆写回、Planner 结果和后续出站消息，避免 Bot 半夜继续被拉起来聊天。
+让 Bot 在合适时间、并且自己确认要睡后进入临时睡眠状态。睡眠期间可以暂停新消息、表达学习、Planner 结果和后续出站消息，避免 Bot 半夜继续被拉起来聊天。
 
 ## 兼容性
 
@@ -17,6 +15,8 @@
 
 上游 v1.1.3 的清单把主程序版本上限固定在 `1.0.0`，主程序高于该版本时插件会被判定不兼容而无法加载；本仓库已将该上限放开到 `1.9.0`。
 
+当前版本已在 **MaiBot 1.2.5 + 插件 SDK 2.8.2** 上逐项核对通过（Hook 载荷字段、配置校验、命令分发、Context Item 协议）。
+
 ## 安装
 
 ```bash
@@ -24,7 +24,7 @@ cd <你的 MaiBot 目录>/plugins
 git clone https://github.com/ValleyWinds/Sleep-Manager.git goodnight_sleep_manager
 ```
 
-目录名建议保持 `goodnight_sleep_manager`：睡眠状态数据路径（`data/plugins/goodnight_sleep_manager/`）与主程序 Prompt 文件名都沿用了这个名字，已有配置和睡眠状态可以继续沿用。后续更新在插件目录内 `git pull` 即可。
+目录名建议保持 `goodnight_sleep_manager`：插件目录名变了会重新生成 `config.toml`，已有配置无法沿用。睡眠状态等数据存放在主程序的 `data/plugins/<插件 ID>/` 下，与目录名无关。后续更新在插件目录内 `git pull` 即可。
 
 ## 核心行为
 
@@ -38,7 +38,6 @@ git clone https://github.com/ValleyWinds/Sleep-Manager.git goodnight_sleep_manag
 
 - 新入站消息进入主处理链路
 - 表达学习提取和写入
-- 新触发的人物事实写回和聊天摘要写回
 - Planner 响应结果和工具调用
 - 睡眠后的后续出站消息
 
@@ -57,15 +56,17 @@ AI 判定只会在允许入睡时间内触发：
 
 AI 入睡判定运行在插件的出站消息 Hook 中，不属于 Maisaka Planner 思考链，所以不会出现在 Planner HTML。需要查看判定过程时，开启“显示 AI 入睡判定日志”，日志会记录跳过原因、AI 判定开始、结果、耗时和正则兜底结果。
 
-AI 判定模板会在插件加载时同步到主程序 Prompt 目录，并注册到主程序 PromptManager，文件名为 `goodnight_sleep_confirmation.prompt`。可以在 WebUI 的 Prompt 页面修改它；保存后的自定义内容会优先生效。
+AI 判定模板会在插件加载时同步到主程序 Prompt 目录，文件名为 `goodnight_sleep_confirmation.prompt`。可以在 WebUI 的 Prompt 页面修改它；保存后的自定义内容会优先生效。
 
 ## 睡眠状态
 
-睡眠状态默认保存到：
+睡眠状态默认保存到插件数据目录：
 
-`data/plugins/goodnight_sleep_manager/sleep_state.json`
+`data/plugins/<插件 ID>/sleep_state.json`
 
-如果 MaiBot、插件 Runner 或插件本身在睡眠期间重启，插件加载时会恢复尚未过期的睡眠状态。预计醒来时间已过时会自动清理。手动 `/sleep_wake`、`/sleep_wakeall` 或自然到点唤醒也会清理对应作用域。
+插件 ID 见 `_manifest.json` 的 `id` 字段（当前为 `local.goodnight-sleep-manager`）。从上游版本升级时，插件会在加载时把旧目录 `data/plugins/goodnight_sleep_manager/` 里的状态与回顾数据一次性复制过来（只复制、不删除旧文件）。
+
+如果 MaiBot、插件 Runner 或插件本身在睡眠期间重启，插件加载时会恢复尚未过期的睡眠状态。预计醒来时间已过时会自动清理。手动 `/sleep_wake`、`/sleep_wake_all` 或自然到点唤醒也会清理对应作用域。
 
 “自然到点醒来”默认开启。进入睡眠后才会启动后台检查任务，到达预计醒来时间后自动唤醒。这个任务不调用 LLM，不消耗 token；没有睡眠记录时会自动退出。关闭后，睡眠状态会在有人发消息、执行命令或其他链路查询时懒唤醒。
 
@@ -116,7 +117,7 @@ AI 判定模板会在插件加载时同步到主程序 Prompt 目录，并注册
 
 回顾文件路径：
 
-`data/plugins/goodnight_sleep_manager/sleep_review/reports/`
+`data/plugins/<插件 ID>/sleep_review/reports/`
 
 回顾内容包括：
 
@@ -137,18 +138,16 @@ AI 判定模板会在插件加载时同步到主程序 Prompt 目录，并注册
 
 - `/sleep_status`：查看当前聊天流对应作用域的睡眠状态
 - `/sleep_wake`：手动唤醒当前聊天流对应作用域，不解除全部聊天流睡眠
-- `/sleep_wakeall`：手动唤醒全部聊天流，解除所有睡眠作用域
+- `/sleep_wake_all`：手动唤醒全部聊天流，解除所有睡眠作用域
 - `/sleep_now`：在当前作息允许入睡时记录一次管理员催睡，等待 Bot 自己确认
 - `/sleep_force`：无视时间窗口，让当前作用域立即睡眠
-- `/sleep_forceall`：无视时间窗口，让全部聊天流进入睡眠
+- `/sleep_force_all`：无视时间窗口，让全部聊天流进入睡眠
 
-`/sleep_now`、`/sleep_force` 和 `/sleep_forceall` 可以通过“允许管理入睡命令”关闭。填写“管理员用户 ID”后，只有列表内用户能使用；留空则不限制。
+`/sleep_now`、`/sleep_force` 和 `/sleep_force_all` 可以通过“允许管理入睡命令”关闭。填写“管理员用户 ID”后，只有列表内用户能使用；留空则不限制。
 
 ## 注意事项
 
-当前 MaiBot 的 `maisaka.planner.before_request` hook 不允许直接中止请求，所以插件会在睡眠期间清空 Planner 工具、压缩请求内容，并在响应后清空结果。新消息入口会被拦截，正常情况下不会再由新消息触发 Planner。
-
-“睡眠期间暂停长期记忆自动写回”依赖主程序提供 `memory.automation.before_enqueue` hook。如果当前 MaiBot 版本没有这个 hook，插件会自动跳过对应 HookHandler，避免加载失败。此时“暂停记忆写入”不会实际生效，需要升级 MaiBot 后使用。
+当前 MaiBot 的 `maisaka.planner.before_request` hook 不允许直接中止请求，所以插件在睡眠期间改用两个手段：清空 Planner 工具定义，并向请求 Items 追加一条系统指令，要求 Planner 不要回复；`maisaka.planner.after_response` 则在睡眠期间把 Planner 输出 Items 置空，丢弃回复内容与工具调用。新消息入口会被拦截，正常情况下不会再由新消息触发 Planner。
 
 当用户在允许入睡时间内催睡时，插件不会强制 Bot 立刻睡觉。它只会提醒 Planner 当前已经落在配置窗口内，是否说晚安入睡仍由 Bot 根据上下文自己决定。
 
@@ -164,11 +163,10 @@ AI 判定模板会在插件加载时同步到主程序 Prompt 目录，并注册
 | `chat.receive.after_process` | EARLY | 二次拦截，阻止消息进入命令与 Maisaka 主链路 |
 | `expression.learn.after_extract` | EARLY | 睡眠期间暂停表达学习提取 |
 | `expression.learn.before_upsert` | EARLY | 睡眠期间阻止表达学习写库 |
-| `maisaka.planner.before_request` | EARLY | 睡眠期间清空 Planner 工具与请求内容 |
-| `maisaka.planner.after_response` | LATE | 睡眠期间清空 Planner 响应与工具调用 |
-| `memory.automation.before_enqueue` | EARLY | 睡眠期间暂停自动记忆写回入队，**条件注册** |
+| `maisaka.planner.before_request` | EARLY | 睡眠期间清空工具定义，并追加“不要回复”的系统指令 Item |
+| `maisaka.planner.after_response` | LATE | 睡眠期间清空 Planner 输出 Items |
 
-最后一项是条件注册的：插件在加载时会探测主程序是否提供 `memory.automation.before_enqueue`，没有就自动跳过该 HookHandler（避免整个插件加载失败），此时“暂停记忆写入”不生效。
+`maisaka.planner.*` 两个 hook 通过序列化的 Context Items 传递请求与响应：插件只做「追加一条系统指令 Item」和「置空输出」两类操作，回带时保持 `item_schema_version` 不变。如果主程序调整该协议版本，插件会退回「只清空工具定义」的降级行为，不会导致加载失败。
 
 ## 插件结构
 
@@ -182,6 +180,7 @@ goodnight_sleep_manager/
 ├─ hook_handlers.py        主程序 Hook 处理
 ├─ command_handlers.py     /sleep_* 命令处理
 ├─ confirmation_judge.py   AI 入睡确认判定
+├─ context_items.py        主程序 Planner Hook 的 Context Item 构造与解析
 ├─ matchers.py             入睡、催睡、排除规则匹配
 ├─ pattern_utils.py        正则规则工具
 ├─ message_utils.py        消息解析工具

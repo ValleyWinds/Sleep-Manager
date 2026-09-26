@@ -92,7 +92,6 @@ FIELD_LABELS: dict[tuple[str, str], LocalizedText] = {
     ("group_schedule", "group_schedules"): {"zh_CN": "群作息覆盖", "en_US": "Group schedule overrides"},
     ("control", "block_inbound_messages"): {"zh_CN": "暂停入站消息", "en_US": "Block inbound messages"},
     ("control", "block_expression_learning"): {"zh_CN": "暂停表达学习", "en_US": "Block expression learning"},
-    ("control", "block_memory_automation"): {"zh_CN": "暂停记忆写入", "en_US": "Block memory writeback"},
     ("control", "block_outbound_messages"): {"zh_CN": "暂停后续出站消息", "en_US": "Block outbound messages"},
     ("control", "planner_control_enabled"): {"zh_CN": "暂停 Planner 结果", "en_US": "Control planner results"},
     ("control", "control_commands_enabled"): {"zh_CN": "允许控制命令", "en_US": "Allow control commands"},
@@ -196,24 +195,20 @@ FIELD_HINTS: dict[tuple[str, str], LocalizedText] = {
         "en_US": "When enabled, planner actions such as reply, send_emoji, or other active tools reset the no-participation timer; no_action/no_reply/no_react/no_plan/finish/wait/continue do not count.",
     },
     ("control", "persist_sleep_state"): {
-        "zh_CN": "开启后会把未过期的睡眠状态保存到 data/plugins/goodnight_sleep_manager/sleep_state.json",
-        "en_US": "When enabled, active sleep state is saved to data/plugins/goodnight_sleep_manager/sleep_state.json.",
+        "zh_CN": "开启后会把未过期的睡眠状态保存到插件数据目录（data/plugins/<插件 ID>/sleep_state.json）",
+        "en_US": "When enabled, active sleep state is saved to the plugin data directory (data/plugins/<plugin id>/sleep_state.json).",
     },
     ("control", "natural_wake_enabled"): {
         "zh_CN": "默认开启。进入睡眠后才启动轻量后台检查，到达预计醒来时间后自动清理睡眠状态；不调用模型、不消耗 token。关闭后只会在消息、命令或其他链路查询睡眠状态时懒唤醒",
         "en_US": "Enabled by default. A lightweight background checker starts only after sleep begins and clears sleep state after the scheduled wake time without model calls or token use. When disabled, wake-up is lazy and happens only when messages, commands, or other chains query sleep state.",
     },
-    ("control", "block_memory_automation"): {
-        "zh_CN": "开启后，睡眠期间不再让新触发的人物事实写回和聊天摘要写回进入队列；已经运行中的任务不会被取消",
-        "en_US": "When enabled, new person fact and chat summary writeback jobs will not be queued while sleeping. Already running jobs are not cancelled.",
-    },
     ("control", "force_sleep_commands_enabled"): {
-        "zh_CN": "开启后允许使用 /sleep_now 引导入睡，或使用 /sleep_force、/sleep_forceall 强制入睡",
-        "en_US": "Enable /sleep_now, /sleep_force, and /sleep_forceall for testing or managing sleep state.",
+        "zh_CN": "开启后允许使用 /sleep_now 引导入睡，或使用 /sleep_force、/sleep_force_all 强制入睡",
+        "en_US": "Enable /sleep_now, /sleep_force, and /sleep_force_all for testing or managing sleep state.",
     },
     ("control", "admin_user_ids"): {
-        "zh_CN": "填写后只有这些用户 ID 可使用 /sleep_now、/sleep_force 和 /sleep_forceall；留空则不限制",
-        "en_US": "When set, only these user IDs can use /sleep_now, /sleep_force, and /sleep_forceall. Empty means unrestricted.",
+        "zh_CN": "填写后只有这些用户 ID 可使用 /sleep_now、/sleep_force 和 /sleep_force_all；留空则不限制",
+        "en_US": "When set, only these user IDs can use /sleep_now, /sleep_force, and /sleep_force_all. Empty means unrestricted.",
     },
     ("sleep_review", "enabled"): {
         "zh_CN": "开启后，睡眠期间被拦截的消息会保存到本地；对应作用域醒来时按群聊/私聊生成回顾文件，不会向聊天流补发回复",

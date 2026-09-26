@@ -11,7 +11,7 @@ from .core_mixin import ALL_SLEEP_SCOPE
 class SleepCommandHandlersMixin:
     """声明插件命令入口"""
 
-    @Command("sleep_status", description="查看晚安睡眠管理状态", pattern=r"^/sleep_status$")
+    @Command("sleep_status", description="查看晚安睡眠管理状态", pattern=r"^/sleep_status\s*$")
     async def handle_status_command(
         self,
         stream_id: str = "",
@@ -43,7 +43,7 @@ class SleepCommandHandlersMixin:
         await self.ctx.send.text(message, stream_id)
         return True, message, True
 
-    @Command("sleep_wake", description="手动唤醒晚安睡眠管理", pattern=r"^/sleep_wake$")
+    @Command("sleep_wake", description="手动唤醒晚安睡眠管理", pattern=r"^/sleep_wake\s*$")
     async def handle_wake_command(
         self,
         stream_id: str = "",
@@ -63,7 +63,7 @@ class SleepCommandHandlersMixin:
             message = (
                 "[睡眠管理] 当前处于全部聊天流睡眠\n"
                 f"当前作用域: {scope_label}\n"
-                "需要解除全部聊天流睡眠时，请使用 /sleep_wakeall"
+                "需要解除全部聊天流睡眠时，请使用 /sleep_wake_all"
             )
         elif sleep_record is not None:
             self._wake_sleep_record(sleep_record, "手动唤醒")
@@ -73,8 +73,8 @@ class SleepCommandHandlersMixin:
         await self.ctx.send.text(message, stream_id)
         return True, message, True
 
-    @Command("sleep_wakeall", description="手动唤醒全部聊天流", pattern=r"^/sleep_wakeall$")
-    async def handle_wakeall_command(
+    @Command("sleep_wake_all", description="手动唤醒全部聊天流", pattern=r"^/sleep_wake_all\s*$")
+    async def handle_wake_all_command(
         self,
         stream_id: str = "",
         group_id: str = "",
@@ -94,7 +94,7 @@ class SleepCommandHandlersMixin:
         await self.ctx.send.text(message, stream_id)
         return True, message, True
 
-    @Command("sleep_now", description="按当前作息引导 Bot 自己决定是否入睡", pattern=r"^/sleep_now$")
+    @Command("sleep_now", description="按当前作息引导 Bot 自己决定是否入睡", pattern=r"^/sleep_now\s*$")
     async def handle_sleep_now_command(
         self,
         stream_id: str = "",
@@ -146,9 +146,9 @@ class SleepCommandHandlersMixin:
             f"生效作息: {schedule_source}"
         )
         await self.ctx.send.text(message, stream_id)
-        return True, message, False
+        return True, message, True
 
-    @Command("sleep_force", description="无视作息窗口让晚安睡眠管理立即入睡", pattern=r"^/sleep_force$")
+    @Command("sleep_force", description="无视作息窗口让晚安睡眠管理立即入睡", pattern=r"^/sleep_force\s*$")
     async def handle_sleep_force_command(
         self,
         stream_id: str = "",
@@ -166,8 +166,8 @@ class SleepCommandHandlersMixin:
             user_id=user_id,
         )
 
-    @Command("sleep_forceall", description="无视作息窗口让全部聊天流立即入睡", pattern=r"^/sleep_forceall$")
-    async def handle_sleep_forceall_command(
+    @Command("sleep_force_all", description="无视作息窗口让全部聊天流立即入睡", pattern=r"^/sleep_force_all\s*$")
+    async def handle_sleep_force_all_command(
         self,
         stream_id: str = "",
         group_id: str = "",
@@ -223,7 +223,7 @@ class SleepCommandHandlersMixin:
             return True, message, True
 
         now = datetime.now()
-        replaced_count = self._wake_all_sleep_records("/sleep_forceall 覆盖已有睡眠状态") if force_all else 0
+        replaced_count = self._wake_all_sleep_records("/sleep_force_all 覆盖已有睡眠状态") if force_all else 0
         _, schedule_source = (
             (self.config.schedule, "全局配置")
             if force_all
@@ -231,7 +231,7 @@ class SleepCommandHandlersMixin:
         )
 
         sleep_until = self._choose_sleep_until(now, None if force_all else command_message)
-        reason = "/sleep_forceall 管理命令触发" if force_all else "/sleep_force 管理命令触发"
+        reason = "/sleep_force_all 管理命令触发" if force_all else "/sleep_force 管理命令触发"
         if user_id.strip():
             reason = f"{reason}: user={user_id.strip()}"
         if force_all:

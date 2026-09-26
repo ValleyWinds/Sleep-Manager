@@ -10,13 +10,29 @@ import re
 
 from .message_utils import extract_text, message_group_id, message_session_id
 from .state import SleepRecord
+from .state_storage import get_plugin_data_dir
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-REVIEW_ROOT = PROJECT_ROOT / "data" / "plugins" / "goodnight_sleep_manager" / "sleep_review"
-MESSAGE_DIR = REVIEW_ROOT / "messages"
-REPORT_DIR = REVIEW_ROOT / "reports"
+REVIEW_DIR_NAME = "sleep_review"
 
 MAX_TEXT_CHARS = 240
+
+
+def _review_root() -> Path:
+    """返回睡醒回顾数据目录"""
+
+    return get_plugin_data_dir() / REVIEW_DIR_NAME
+
+
+def _message_dir() -> Path:
+    """返回睡眠期间消息记录目录"""
+
+    return _review_root() / "messages"
+
+
+def _report_dir() -> Path:
+    """返回睡醒回顾报告目录"""
+
+    return _review_root() / "reports"
 
 
 @dataclass
@@ -45,7 +61,7 @@ def append_sleep_review_message(message: dict[str, Any], sleep_record: SleepReco
         return
 
     try:
-        MESSAGE_DIR.mkdir(parents=True, exist_ok=True)
+        _message_dir().mkdir(parents=True, exist_ok=True)
         record_path = _message_file_path(sleep_record.scope_key)
         with record_path.open("a", encoding="utf-8") as file:
             file.write(json.dumps(asdict(review_message), ensure_ascii=False) + "\n")
@@ -112,8 +128,8 @@ async def generate_sleep_review(ctx: Any, sleep_record: SleepRecord, config: Any
         "chat_summaries": chat_summaries,
     }
 
-    REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    report_path = REPORT_DIR / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{_safe_filename(sleep_record.scope_key)}.json"
+    _report_dir().mkdir(parents=True, exist_ok=True)
+    report_path = _report_dir() / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{_safe_filename(sleep_record.scope_key)}.json"
     report_path.write_text(json.dumps(report_payload, ensure_ascii=False, indent=2), encoding="utf-8")
     _remove_reviewed_messages(sleep_record, messages)
     logger.info(f"睡醒回顾已生成: {report_path}")
@@ -404,7 +420,7 @@ def _format_datetime(value: datetime | None) -> str:
 
 
 def _message_file_path(scope_key: str) -> Path:
-    return MESSAGE_DIR / f"{_safe_filename(scope_key)}.jsonl"
+    return _message_dir() / f"{_safe_filename(scope_key)}.jsonl"
 
 
 def _safe_filename(value: str) -> str:

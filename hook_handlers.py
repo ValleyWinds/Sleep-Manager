@@ -6,18 +6,21 @@ from typing import Any
 from maibot_sdk import HookHandler
 from maibot_sdk.types import HookMode, HookOrder
 
+from .context_items import build_system_message_item, extract_item_tool_names
 
-MEMORY_AUTOMATION_HOOK = "memory.automation.before_enqueue"
-TIMING_GATE_TOOL_NAMES = {"continue", "no_action", "wait"}
+TIMING_GATE_TOOL_NAMES = ("continue", "no_action", "wait")
+SLEEPING_NO_ACTION_PROMPT = (
+    "当前 Bot 正在睡眠状态。不要回复用户，不要调用任何工具，只输出 SLEEPING_NO_ACTION。"
+)
 
 
-def _extract_hook_tool_name(raw_item: Any) -> str:
-    """从 Hook 工具定义或工具调用载荷中提取工具名"""
+def _extract_tool_definition_name(raw_item: Any) -> str:
+    """从序列化工具定义中提取工具名"""
 
     if not isinstance(raw_item, dict):
         return ""
 
-    raw_name = raw_item.get("name") or raw_item.get("tool_name")
+    raw_name = raw_item.get("name")
     function_data = raw_item.get("function")
     if not raw_name and isinstance(function_data, dict):
         raw_name = function_data.get("name")
@@ -25,47 +28,23 @@ def _extract_hook_tool_name(raw_item: Any) -> str:
 
 
 def _only_timing_gate_tools(raw_items: Any) -> bool:
-    """判断当前 Hook 载荷是否只包含 Timing Gate 控制工具"""
+    """判断当前工具定义是否只包含 Timing Gate 控制工具"""
 
     if not isinstance(raw_items, list) or not raw_items:
         return False
 
-    tool_names = {_extract_hook_tool_name(item) for item in raw_items}
+    tool_names = {_extract_tool_definition_name(item) for item in raw_items}
     tool_names.discard("")
-    return bool(tool_names) and tool_names.issubset(TIMING_GATE_TOOL_NAMES)
+    return bool(tool_names) and tool_names.issubset(set(TIMING_GATE_TOOL_NAMES))
 
 
-def _memory_automation_hook_supported() -> bool:
-    """检测当前 MaiBot 本体是否提供自动记忆写回入队 Hook"""
+def _only_timing_gate_output_items(raw_items: Any) -> bool:
+    """判断 Planner 输出 Items 是否只包含 Timing Gate 控制工具"""
 
-    try:
-        from src.plugin_runtime.host.hook_spec_registry import HookSpecRegistry
-        from src.services.memory_flow_service import register_memory_automation_hook_specs
-
-        registry = HookSpecRegistry()
-        registered_specs = register_memory_automation_hook_specs(registry)
-    except Exception:
+    tool_names = {name for name in extract_item_tool_names(raw_items) if name}
+    if not tool_names:
         return False
-
-    return any(spec.name == MEMORY_AUTOMATION_HOOK for spec in registered_specs)
-
-
-def _memory_automation_hook_handler(func: Any) -> Any:
-    """仅在主程序支持对应 Hook 时注册长期记忆拦截处理器"""
-
-    if not _memory_automation_hook_supported():
-        return func
-
-    try:
-        return HookHandler(
-            MEMORY_AUTOMATION_HOOK,
-            name="sleep_memory_automation_enqueue_blocker",
-            description="睡眠期间暂停自动记忆写回任务入队",
-            mode=HookMode.BLOCKING,
-            order=HookOrder.EARLY,
-        )(func)
-    except Exception:
-        return func
+    return tool_names.issubset(set(TIMING_GATE_TOOL_NAMES))
 
 
 class SleepHookHandlersMixin:
@@ -183,21 +162,6 @@ class SleepHookHandlersMixin:
             return self._abort_result("睡眠中，表达学习写入已暂停")
         return None
 
-    @_memory_automation_hook_handler
-    async def handle_memory_automation_before_enqueue(self, **kwargs: Any) -> dict[str, Any] | None:
-        """睡眠期间禁止新触发的 A-Memorix/记忆整理任务进入队列"""
-
-        raw_message = kwargs.get("message")
-        message = raw_message if isinstance(raw_message, dict) else None
-        if self._should_block_memory_automation(
-            session_id=kwargs.get("session_id"),
-            group_id=kwargs.get("group_id"),
-            message=message,
-        ):
-            service_name = str(kwargs.get("service_name") or "memory_automation").strip()
-            return self._abort_result(f"睡眠中，自动记忆写回已暂停: {service_name}")
-        return None
-
     @HookHandler(
         "maisaka.planner.before_request",
         name="sleep_planner_request_controller",
@@ -212,37 +176,22 @@ class SleepHookHandlersMixin:
         if _only_timing_gate_tools(kwargs.get("tool_definitions")):
             return None
 
+        # 主程序只回读 items / tool_definitions，且要求 item_schema_version 原样带回
+        raw_items = kwargs.get("items")
+
         if self._should_control_planner(kwargs.get("session_id")):
             modified_kwargs = dict(kwargs)
             modified_kwargs["tool_definitions"] = []
-            modified_kwargs["messages"] = [
-                {
-                    "role": "system",
-                    "content": "当前 Bot 正在睡眠状态。不要回复用户，不要调用任何工具，只输出 SLEEPING_NO_ACTION。",
-                },
-                {
-                    "role": "user",
-                    "content": "SLEEPING_NO_ACTION",
-                },
-            ]
+            if isinstance(raw_items, list):
+                modified_kwargs["items"] = [*raw_items, build_system_message_item(SLEEPING_NO_ACTION_PROMPT)]
             return {"action": "continue", "modified_kwargs": modified_kwargs}
 
         planner_context = self._build_pending_sleep_request_planner_context(kwargs.get("session_id"))
-        if not planner_context:
-            return None
-
-        raw_messages = kwargs.get("messages")
-        if not isinstance(raw_messages, list):
+        if not planner_context or not isinstance(raw_items, list):
             return None
 
         modified_kwargs = dict(kwargs)
-        modified_kwargs["messages"] = [
-            *raw_messages,
-            {
-                "role": "system",
-                "content": planner_context,
-            },
-        ]
+        modified_kwargs["items"] = [*raw_items, build_system_message_item(planner_context)]
         return {"action": "continue", "modified_kwargs": modified_kwargs}
 
     @HookHandler(
@@ -255,17 +204,19 @@ class SleepHookHandlersMixin:
     async def handle_planner_after_response(self, **kwargs: Any) -> dict[str, Any] | None:
         """睡眠期间清空 Planner 响应，避免后续动作继续执行"""
 
+        raw_output_items = kwargs.get("output_items")
+
         # Timing Gate 的控制结果必须原样交回主流程，否则会被误判为没有有效工具
-        if _only_timing_gate_tools(kwargs.get("tool_calls")):
+        if _only_timing_gate_output_items(raw_output_items):
             return None
 
+        # 主程序只回读 output_items，置空即可丢弃 Planner 回复与工具调用
         if not self._should_control_planner(kwargs.get("session_id")):
-            self._mark_planner_sleep_activity(kwargs.get("session_id"), kwargs.get("tool_calls"))
+            self._mark_planner_sleep_activity(kwargs.get("session_id"), raw_output_items)
             return None
 
         modified_kwargs = dict(kwargs)
-        modified_kwargs["response"] = ""
-        modified_kwargs["tool_calls"] = []
+        modified_kwargs["output_items"] = []
         return {"action": "continue", "modified_kwargs": modified_kwargs}
 
     @HookHandler(

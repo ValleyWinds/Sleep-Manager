@@ -1,5 +1,7 @@
 """晚安睡眠管理插件入口"""
 
+from typing import Any
+
 from maibot_sdk import MaiBotPlugin
 
 from .command_handlers import SleepCommandHandlersMixin
@@ -8,6 +10,22 @@ from .confirmation_judge import ensure_sleep_confirmation_prompt_files
 from .core_mixin import SleepCoreMixin
 from .hook_handlers import SleepHookHandlersMixin
 from .schema_i18n import apply_config_schema_i18n
+from .state_storage import migrate_legacy_data_files, set_data_dir
+
+
+def _setup_plugin_data_dir(ctx: Any) -> None:
+    """把 SDK 提供的数据目录注入持久化模块，并迁移旧目录里的数据"""
+
+    paths = getattr(ctx, "paths", None)
+    set_data_dir(getattr(paths, "data_dir", "") if paths is not None else "")
+
+    try:
+        migrated = migrate_legacy_data_files()
+    except Exception as exc:
+        ctx.logger.warning(f"迁移旧数据目录失败: {exc}")
+        return
+    if migrated:
+        ctx.logger.info(f"已从旧数据目录迁移睡眠状态数据: {migrated}")
 
 
 class GoodnightSleepManagerPlugin(
@@ -29,6 +47,7 @@ class GoodnightSleepManagerPlugin(
     async def on_load(self) -> None:
         """插件加载时输出当前状态"""
 
+        _setup_plugin_data_dir(self.ctx)
         ensure_sleep_confirmation_prompt_files(self.ctx.logger)
         self._restore_sleep_state()
         self._start_natural_wake_task()
@@ -40,7 +59,7 @@ class GoodnightSleepManagerPlugin(
 
         await self._stop_natural_wake_task()
         await self._stop_idle_sleep_task()
-        self._handle_plugin_unload()
+        await self._handle_plugin_unload()
 
     async def on_config_update(self, scope: str, config_data: dict[str, object], version: str) -> None:
         """配置热更新回调"""
