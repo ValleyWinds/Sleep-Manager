@@ -1,6 +1,8 @@
 # 麦麦晚安睡眠管理
 
-> 本仓库是 [RaTaiHok/goodnight_sleep_manager](https://github.com/RaTaiHok/goodnight_sleep_manager)（作者 [RaTaiHok](https://github.com/RaTaiHok) / Neko_RTHsama）的 fork，在上游 v1.1.3（2026-05-17）基础上延续维护。
+> 本仓库是 [goodnight_sleep_manager](https://github.com/RaTaiHok/goodnight_sleep_manager)（作者 Neko_RTHsama）的Fork，在上游 v1.1.3（2026-05-17）基础上延续维护。
+>
+> Copyright (C) 2026 RaTaiHok，以 GPL-3.0 许可证发布。
 
 让 Bot 在合适时间、并且自己确认要睡后进入临时睡眠状态。睡眠期间可以暂停新消息、表达学习、Planner 结果和后续出站消息，避免 Bot 半夜继续被拉起来聊天。
 
