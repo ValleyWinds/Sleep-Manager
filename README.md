@@ -66,7 +66,7 @@ AI 判定模板会在插件加载时同步到主程序 Prompt 目录，文件名
 
 `data/plugins/<插件 ID>/sleep_state.json`
 
-插件 ID 见 `_manifest.json` 的 `id` 字段（当前为 `ValleyWinds.sleep-manager`）。从上游版本升级时，插件会在加载时把旧目录（`data/plugins/goodnight_sleep_manager/` 及曾用 ID 目录 `data/plugins/local.goodnight-sleep-manager/`）里的状态与回顾数据一次性复制过来（只复制、不删除旧文件）。
+插件 ID 见 `_manifest.json` 的 `id` 字段（当前为 `ValleyWinds.sleep-manager`），数据目录按此 ID 计算。**从上游版本或旧 ID 升级时不会自动迁移数据**——如果需要保留旧状态与回顾记录，请手动把旧目录（`data/plugins/goodnight_sleep_manager/`，或曾用 ID 目录 `data/plugins/local.goodnight-sleep-manager/`）里的内容拷到 `data/plugins/ValleyWinds.sleep-manager/`。
 
 如果 MaiBot、插件 Runner 或插件本身在睡眠期间重启，插件加载时会恢复尚未过期的睡眠状态。预计醒来时间已过时会自动清理。手动 `/sleep_wake`、`/sleep_wake_all` 或自然到点唤醒也会清理对应作用域。
 

@@ -10,22 +10,14 @@ from .confirmation_judge import ensure_sleep_confirmation_prompt_files
 from .core_mixin import SleepCoreMixin
 from .hook_handlers import SleepHookHandlersMixin
 from .schema_i18n import apply_config_schema_i18n
-from .state_storage import migrate_legacy_data_files, set_data_dir
+from .state_storage import set_data_dir
 
 
 def _setup_plugin_data_dir(ctx: Any) -> None:
-    """把 SDK 提供的数据目录注入持久化模块，并迁移旧目录里的数据"""
+    """把 SDK 提供的数据目录注入持久化模块"""
 
     paths = getattr(ctx, "paths", None)
     set_data_dir(getattr(paths, "data_dir", "") if paths is not None else "")
-
-    try:
-        migrated = migrate_legacy_data_files()
-    except Exception as exc:
-        ctx.logger.warning(f"迁移旧数据目录失败: {exc}")
-        return
-    if migrated:
-        ctx.logger.info(f"已从旧数据目录迁移睡眠状态数据: {migrated}")
 
 
 class GoodnightSleepManagerPlugin(

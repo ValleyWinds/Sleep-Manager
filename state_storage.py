@@ -5,18 +5,14 @@ from pathlib import Path
 from typing import Any, Dict
 
 import json
-import shutil
 
 from .state import SleepRecord
 
 PERSISTENCE_VERSION = 2
 GLOBAL_SCOPE_KEY = "global"
 STATE_FILENAME = "sleep_state.json"
-# 迁移来源目录（按优先级）：曾用过的旧插件 ID 目录、上游版本硬编码目录
-LEGACY_PLUGIN_DIR_NAMES = ("local.goodnight-sleep-manager", "goodnight_sleep_manager")
 # 未注入数据目录时的回退目录（与上游行为保持一致）
 FALLBACK_PLUGIN_DIR_NAME = "goodnight_sleep_manager"
-MIGRATION_MARKER_FILENAME = ".legacy_migration_done"
 
 _data_dir: Path | None = None
 
@@ -29,67 +25,18 @@ def set_data_dir(data_dir: Path | str | None) -> None:
     _data_dir = Path(normalized) if normalized else None
 
 
-def get_legacy_data_dirs() -> list[Path]:
-    """返回历史版本可能写过数据的目录，按优先级排列"""
-
-    plugins_root = Path(__file__).resolve().parents[2] / "data" / "plugins"
-    return [plugins_root / name for name in LEGACY_PLUGIN_DIR_NAMES]
-
-
 def get_plugin_data_dir() -> Path:
     """返回插件数据目录；未注入时退回上游旧路径，保证脱离宿主也能工作"""
 
     if _data_dir is not None:
         return _data_dir
-    return get_legacy_data_dirs()[-1]
+    return Path(__file__).resolve().parents[2] / "data" / "plugins" / FALLBACK_PLUGIN_DIR_NAME
 
 
 def get_sleep_state_path() -> Path:
     """返回睡眠状态持久化文件路径"""
 
     return get_plugin_data_dir() / STATE_FILENAME
-
-
-def migrate_legacy_data_files() -> list[str]:
-    """把历史目录里的数据文件搬到插件数据目录
-
-    只做一次性搬迁：在插件数据目录写下标记文件，避免用户清空新状态后又被旧文件覆盖。
-    迁移过程只做复制，不删除旧目录里的任何文件。
-    """
-
-    target_dir = get_plugin_data_dir()
-    legacy_dirs = get_legacy_data_dirs()
-    if target_dir in legacy_dirs:
-        return []
-
-    marker_path = target_dir / MIGRATION_MARKER_FILENAME
-    if marker_path.exists():
-        return []
-
-    migrated: list[str] = []
-    for legacy_dir in legacy_dirs:
-        if not legacy_dir.is_dir():
-            continue
-        for source_path in sorted(legacy_dir.rglob("*")):
-            if not source_path.is_file():
-                continue
-            relative_path = source_path.relative_to(legacy_dir)
-            target_path = target_dir / relative_path
-            if target_path.exists():
-                continue
-            try:
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(source_path, target_path)
-            except Exception:
-                continue
-            migrated.append(f"{legacy_dir.name}/{relative_path.as_posix()}")
-
-    try:
-        target_dir.mkdir(parents=True, exist_ok=True)
-        marker_path.write_text(datetime.now().isoformat(timespec="seconds"), encoding="utf-8")
-    except Exception:
-        pass
-    return migrated
 
 
 def load_persisted_sleep_records() -> Dict[str, SleepRecord]:
