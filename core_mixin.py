@@ -1,4 +1,4 @@
-"""晚安睡眠管理核心逻辑"""
+"""睡眠管理Next核心逻辑"""
 
 from datetime import datetime
 from time import monotonic
@@ -95,7 +95,7 @@ class SleepCoreMixin:
         self._clear_pending_sleep_request()
         self._save_sleep_state()
         self._get_logger().info(
-            f"晚安睡眠管理进入睡眠，作用域: {scope_label}，预计醒来: {format_datetime(sleep_until)}，原因: {reason}"
+            f"睡眠管理Next进入睡眠，作用域: {scope_label}，预计醒来: {format_datetime(sleep_until)}，原因: {reason}"
         )
         self._start_natural_wake_task()
         return record
@@ -119,7 +119,7 @@ class SleepCoreMixin:
         self._state.clear_sleep(record.scope_key)
         self._clear_pending_sleep_request()
         self._save_sleep_state()
-        self._get_logger().info(f"晚安睡眠管理已唤醒: scope={record.scope_label} reason={reason}")
+        self._get_logger().info(f"睡眠管理Next已唤醒: scope={record.scope_label} reason={reason}")
         self._schedule_sleep_review(record)
 
     def _wake_all_sleep_records(self, reason: str) -> int:
@@ -131,7 +131,7 @@ class SleepCoreMixin:
 
         for scope_key, record in records:
             self._state.clear_sleep(scope_key)
-            self._get_logger().info(f"晚安睡眠管理已唤醒: scope={record.scope_label} reason={reason}")
+            self._get_logger().info(f"睡眠管理Next已唤醒: scope={record.scope_label} reason={reason}")
             self._schedule_sleep_review(record)
         self._clear_pending_sleep_request()
         self._save_sleep_state()
@@ -207,10 +207,10 @@ class SleepCoreMixin:
         if self._state.sleep_records:
             if self.config.control.persist_sleep_state:
                 self._save_sleep_state()
-                self._get_logger().info("晚安睡眠管理卸载，未过期睡眠状态已保留")
+                self._get_logger().info("睡眠管理Next卸载，未过期睡眠状态已保留")
             else:
                 self._clear_sleep_state_storage()
-                self._get_logger().info("晚安睡眠管理卸载，持久化已关闭，未保留睡眠状态")
+                self._get_logger().info("睡眠管理Next卸载，持久化已关闭，未保留睡眠状态")
             return
 
         self._clear_sleep_state_storage()
@@ -666,7 +666,7 @@ class SleepCoreMixin:
         """清理单个已经到点的睡眠状态"""
 
         self._state.clear_sleep(scope_key)
-        self._get_logger().info(f"晚安睡眠管理已唤醒: scope={record.scope_label} reason=到达预计醒来时间")
+        self._get_logger().info(f"睡眠管理Next已唤醒: scope={record.scope_label} reason=到达预计醒来时间")
         self._schedule_sleep_review(record)
         if save:
             self._save_sleep_state()
@@ -1148,7 +1148,7 @@ class SleepCoreMixin:
 
         request_text = self._state.pending_sleep_request_text or "用户建议 Bot 睡觉"
         return (
-            "【晚安睡眠管理】刚刚有用户在当前会话建议你睡觉。"
+            "【睡眠管理Next】刚刚有用户在当前会话建议你睡觉。"
             f"用户原话：{request_text}\n"
             f"当前时间 {now.strftime('%H:%M')} 已经位于{schedule_source}的允许入睡时间内："
             f"{active_schedule.sleep_window_start} 到 {active_schedule.sleep_window_end}。\n"

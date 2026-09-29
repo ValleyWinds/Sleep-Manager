@@ -1,4 +1,4 @@
-"""晚安睡眠管理的运行期状态"""
+"""睡眠管理Next的运行期状态"""
 
 from dataclasses import dataclass, field
 from datetime import datetime

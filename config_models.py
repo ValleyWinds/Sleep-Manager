@@ -1,4 +1,4 @@
-"""晚安睡眠管理插件配置模型"""
+"""睡眠管理Next插件配置模型"""
 
 from typing import Any, List
 
@@ -21,8 +21,8 @@ class PluginSectionConfig(PluginConfigBase):
     __ui_icon__ = "moon"
     __ui_order__ = 0
 
-    enabled: bool = Field(default=True, description="是否启用晚安睡眠管理")
-    config_version: str = Field(default="2.0.1", description="配置版本")
+    enabled: bool = Field(default=True, description="是否启用睡眠管理Next")
+    config_version: str = Field(default="3.0.0", description="配置版本")
 
 
 class TriggerConfig(PluginConfigBase):
@@ -197,7 +197,7 @@ class SleepReviewConfig(PluginConfigBase):
 
 
 class GoodnightSleepManagerConfig(PluginConfigBase):
-    """晚安睡眠管理完整配置。"""
+    """睡眠管理Next完整配置。"""
 
     plugin: PluginSectionConfig = Field(default_factory=PluginSectionConfig)
     trigger: TriggerConfig = Field(default_factory=TriggerConfig)

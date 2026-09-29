@@ -1,4 +1,4 @@
-"""晚安睡眠管理命令处理器"""
+"""睡眠管理Next命令处理器"""
 
 from datetime import datetime
 from typing import Any
@@ -11,7 +11,7 @@ from .core_mixin import ALL_SLEEP_SCOPE
 class SleepCommandHandlersMixin:
     """声明插件命令入口"""
 
-    @Command("sleep_status", description="查看晚安睡眠管理状态", pattern=r"^/sleep_status\s*$")
+    @Command("sleep_status", description="查看睡眠管理Next状态", pattern=r"^/sleep_status\s*$")
     async def handle_status_command(
         self,
         stream_id: str = "",
@@ -43,7 +43,7 @@ class SleepCommandHandlersMixin:
         await self.ctx.send.text(message, stream_id)
         return True, message, True
 
-    @Command("sleep_wake", description="手动唤醒晚安睡眠管理", pattern=r"^/sleep_wake\s*$")
+    @Command("sleep_wake", description="手动唤醒睡眠管理Next", pattern=r"^/sleep_wake\s*$")
     async def handle_wake_command(
         self,
         stream_id: str = "",
@@ -151,7 +151,7 @@ class SleepCommandHandlersMixin:
         # _build_pending_sleep_request_planner_context）。拦截会让催睡引导失效。
         return True, message, False
 
-    @Command("sleep_force", description="无视作息窗口让晚安睡眠管理立即入睡", pattern=r"^/sleep_force\s*$")
+    @Command("sleep_force", description="无视作息窗口让睡眠管理Next立即入睡", pattern=r"^/sleep_force\s*$")
     async def handle_sleep_force_command(
         self,
         stream_id: str = "",

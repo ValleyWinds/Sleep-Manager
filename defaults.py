@@ -1,4 +1,4 @@
-"""晚安睡眠管理的默认正则"""
+"""睡眠管理Next的默认正则"""
 
 from typing import List
 

@@ -1,4 +1,4 @@
-# 麦麦晚安睡眠管理
+# 睡眠管理Next
 
 > 本仓库是 [goodnight_sleep_manager](https://github.com/RaTaiHok/goodnight_sleep_manager)（作者 RaTaiHok）的Fork，在上游 v1.1.3（2026-05-17）基础上延续维护。
 >
@@ -58,9 +58,9 @@ AI 判定只会在允许入睡时间内触发：
 
 为了避免被诱导睡觉，插件默认只接受短句、自我入睡或群体收尾晚安。带 `@`、明显称呼别人、引用回复、或“晚安，某某”这类对个人说晚安的内容不会触发。正则规则仍保留为 AI 不可用或结果不确定时的兜底。
 
-AI 入睡判定运行在插件的出站消息 Hook 中，不属于 Maisaka Planner 思考链，所以不会出现在 Planner HTML。需要查看判定过程时，开启“显示 AI 入睡判定日志”，日志会记录跳过原因、AI 判定开始、结果、耗时和正则兜底结果。
+AI 入睡判定运行在插件的出站消息 Hook 中，不属于 Maisaka Planner 思考链，所以不会出现在 Planner HTML。需要查看判定过程时，开启"显示 AI 入睡判定日志"，日志会记录跳过原因、AI 判定开始、结果、耗时和正则兜底结果。
 
-AI 判定模板会在插件加载时同步到主程序 Prompt 目录，文件名为 `goodnight_sleep_confirmation.prompt`。可以在 WebUI 的 Prompt 页面修改它；保存后的自定义内容会优先生效。
+AI 判定模板内置在插件代码中，不依赖主程序 Prompt 目录。
 
 ## 睡眠状态
 
@@ -68,7 +68,7 @@ AI 判定模板会在插件加载时同步到主程序 Prompt 目录，文件名
 
 `data/plugins/<插件 ID>/sleep_state.json`
 
-插件 ID 见 `_manifest.json` 的 `id` 字段（当前为 `next.sleep-manager`）。本插件不读取、不迁移任何旧版本目录（如 `data/plugins/goodnight_sleep_manager/`），安装后从全新状态开始；如需保留旧回顾记录，请自行手动拷贝到 `data/plugins/next.sleep-manager/sleep_review/`。
+插件 ID 见 `_manifest.json` 的 `id` 字段（当前为 `valleywinds.sleep-manager`）。本插件不读取、不迁移任何旧版本目录（如 `data/plugins/goodnight_sleep_manager/`），安装后从全新状态开始；如需保留旧回顾记录，请自行手动拷贝到 `data/plugins/valleywinds.sleep-manager/sleep_review/`。
 
 如果 MaiBot、插件 Runner 或插件本身在睡眠期间重启，插件加载时会恢复尚未过期的睡眠状态。预计醒来时间已过时会自动清理。手动 `/sleep_wake`、`/sleep_wake_all` 或自然到点唤醒也会清理对应作用域。
 
@@ -194,9 +194,6 @@ goodnight_sleep_manager/
 ├─ sleep_review.py         睡醒回顾记录和总结
 ├─ reply_generator.py      非入睡时间催睡回复生成
 ├─ defaults.py             默认规则和配置数据
-├─ prompts/                可同步到主程序 Prompt 页面的默认模板
-│  └─ zh-CN/
-│     └─ goodnight_sleep_confirmation.prompt
 ├─ i18n/                   插件基础国际化文本
 │  ├─ zh-CN.json
 │  └─ en-US.json

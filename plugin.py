@@ -1,4 +1,4 @@
-"""晚安睡眠管理插件入口"""
+"""睡眠管理Next插件入口"""
 
 from typing import Any
 
@@ -6,7 +6,6 @@ from maibot_sdk import MaiBotPlugin
 
 from .command_handlers import SleepCommandHandlersMixin
 from .config_models import GoodnightSleepManagerConfig
-from .confirmation_judge import ensure_sleep_confirmation_prompt_files
 from .core_mixin import SleepCoreMixin
 from .hook_handlers import SleepHookHandlersMixin
 from .schema_i18n import apply_config_schema_i18n
@@ -39,11 +38,10 @@ class GoodnightSleepManagerPlugin(
         """插件加载时输出当前状态"""
 
         _setup_plugin_data_dir(self.ctx)
-        ensure_sleep_confirmation_prompt_files(self.ctx.logger)
         self._restore_sleep_state()
         self._start_natural_wake_task()
         self._start_idle_sleep_task()
-        self.ctx.logger.info("晚安睡眠管理已加载")
+        self.ctx.logger.info("睡眠管理Next已加载")
 
     async def on_unload(self) -> None:
         """插件卸载时保留未过期睡眠状态，便于重启恢复"""
@@ -64,7 +62,7 @@ class GoodnightSleepManagerPlugin(
             self._clear_sleep_state_storage()
         await self._restart_natural_wake_task()
         await self._restart_idle_sleep_task()
-        self.ctx.logger.info("晚安睡眠管理配置已更新")
+        self.ctx.logger.info("睡眠管理Next配置已更新")
 
     @classmethod
     def build_config_schema(

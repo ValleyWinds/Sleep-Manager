@@ -1,4 +1,4 @@
-"""晚安睡眠管理 Hook 处理器"""
+"""睡眠管理Next Hook 处理器"""
 
 from datetime import datetime
 from typing import Any

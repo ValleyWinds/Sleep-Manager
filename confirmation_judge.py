@@ -1,7 +1,6 @@
 """使用 LLM 判断 Bot 出站消息是否是在确认自己要睡觉"""
 
-from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any, Sequence
 
 import asyncio
 import re
@@ -12,36 +11,6 @@ from .message_utils import normalize_text
 SLEEP_DECISION = "SLEEP"
 NOT_SLEEP_DECISION = "NOT_SLEEP"
 UNSURE_DECISION = "UNSURE"
-PROMPT_NAME = "goodnight_sleep_confirmation"
-PROMPT_FILENAME = f"{PROMPT_NAME}.prompt"
-SUPPORTED_PROMPT_LOCALES = ("zh-CN",)
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-PLUGIN_PROMPTS_ROOT = Path(__file__).resolve().parent / "prompts"
-HOST_PROMPTS_ROOT = PROJECT_ROOT / "prompts"
-
-
-def _load_host_prompt_loader() -> Callable[..., str] | None:
-    """加载主程序的 Prompt 读取函数，不可用时返回 None
-
-    插件运行在独立进程里，拿不到主程序的 PromptManager 单例，因此这里只借用主程序的
-    模板读取函数解析已经同步到 prompts/ 目录的模板文件；失败时退回内置模板。
-    """
-
-    try:
-        from src.common.prompt_i18n import load_prompt
-    except Exception:
-        return None
-    return load_prompt
-
-
-def ensure_sleep_confirmation_prompt_files(logger: Any | None = None) -> None:
-    """把插件默认 Prompt 同步到主程序 Prompt 目录"""
-
-    for locale in SUPPORTED_PROMPT_LOCALES:
-        source_dir = PLUGIN_PROMPTS_ROOT / locale
-        target_dir = HOST_PROMPTS_ROOT / locale
-        _copy_default_file(source_dir / PROMPT_FILENAME, target_dir / PROMPT_FILENAME, logger)
 
 
 def render_sleep_confirmation_prompt(
@@ -53,7 +22,9 @@ def render_sleep_confirmation_prompt(
     bot_message: str,
     logger: Any | None = None,
 ) -> str:
-    """读取并渲染 AI 入睡确认 Prompt"""
+    """渲染 AI 入睡确认 Prompt（使用内置模板）"""
+
+    del logger  # 内置模板不需要日志
 
     context = {
         "has_pending_request": "是" if has_pending_request else "否",
@@ -62,29 +33,7 @@ def render_sleep_confirmation_prompt(
         "outbound_context": outbound_context or "无",
         "bot_message": bot_message,
     }
-    try:
-        loader = _load_host_prompt_loader()
-        if loader is None:
-            return _render_fallback_sleep_confirmation_prompt(**context)
-        return loader(PROMPT_NAME, prompts_root=HOST_PROMPTS_ROOT, **context)
-    except Exception as exc:
-        if logger is not None:
-            logger.warning(f"AI 入睡确认 Prompt 加载失败，使用内置兜底: error={exc}")
-        return _render_fallback_sleep_confirmation_prompt(**context)
-
-
-def _copy_default_file(source_path: Path, target_path: Path, logger: Any | None = None) -> None:
-    """只在目标文件不存在时复制默认 Prompt 文件"""
-
-    if not source_path.is_file() or target_path.exists():
-        return
-
-    try:
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        target_path.write_text(source_path.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
-    except Exception as exc:
-        if logger is not None:
-            logger.warning(f"同步默认 Prompt 文件失败: source={source_path} target={target_path} error={exc}")
+    return _render_fallback_sleep_confirmation_prompt(**context)
 
 
 def _render_fallback_sleep_confirmation_prompt(

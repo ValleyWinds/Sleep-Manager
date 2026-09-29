@@ -1,4 +1,4 @@
-"""晚安睡眠管理的持久化状态文件工具"""
+"""睡眠管理Next的持久化状态文件工具"""
 
 from datetime import datetime
 from pathlib import Path

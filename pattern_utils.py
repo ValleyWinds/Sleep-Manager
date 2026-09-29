@@ -15,5 +15,5 @@ def matches_any_pattern(text: str, patterns: List[str], logger: Optional[Logger]
                 return True
         except re.error as exc:
             if logger is not None:
-                logger.warning(f"晚安睡眠管理正则无效，已跳过: {pattern} ({exc})")
+                logger.warning(f"睡眠管理Next正则无效，已跳过: {pattern} ({exc})")
     return False
