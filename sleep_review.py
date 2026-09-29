@@ -308,7 +308,7 @@ async def _summarize_chat(
     ]
 
     try:
-        result = await ctx.llm.generate(prompt, model="utils", temperature=0.2, max_tokens=max_tokens)
+        result = await ctx.llm.generate(prompt, task_name="utils", temperature=0.2, max_tokens=max_tokens)
     except Exception as exc:
         logger.warning(f"生成睡醒回顾失败，使用摘要: chat={_chat_label(messages)} error={exc}")
         return _fallback_summary(messages)

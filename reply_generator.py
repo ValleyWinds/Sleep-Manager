@@ -40,7 +40,7 @@ async def generate_off_window_reply(ctx: Any, user_message: str) -> str:
                 ),
             },
         ]
-        result = await ctx.llm.generate(prompt, model="replyer", temperature=0.7, max_tokens=80)
+        result = await ctx.llm.generate(prompt, task_name="replyer", temperature=0.7, max_tokens=80)
         if not isinstance(result, dict) or not result.get("success", False):
             return ""
         return _clean_generated_reply(str(result.get("response") or ""))

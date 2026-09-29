@@ -199,7 +199,7 @@ async def judge_sleep_confirmation(
     safe_max_tokens = max(16, int(max_tokens or 64))
     started_at = time.perf_counter()
     try:
-        generate_task = ctx.llm.generate(prompt, model="replyer", temperature=0.0, max_tokens=safe_max_tokens)
+        generate_task = ctx.llm.generate(prompt, task_name="replyer", temperature=0.0, max_tokens=safe_max_tokens)
         if safe_timeout_seconds > 0:
             result = await asyncio.wait_for(generate_task, timeout=float(safe_timeout_seconds))
         else:

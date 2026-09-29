@@ -22,7 +22,7 @@ class PluginSectionConfig(PluginConfigBase):
     __ui_order__ = 0
 
     enabled: bool = Field(default=True, description="是否启用晚安睡眠管理")
-    config_version: str = Field(default="2.0.0", description="配置版本")
+    config_version: str = Field(default="2.0.1", description="配置版本")
 
 
 class TriggerConfig(PluginConfigBase):
@@ -67,10 +67,8 @@ class TriggerConfig(PluginConfigBase):
     @field_validator("ai_confirmation_keywords", mode="before")
     @classmethod
     def _coerce_ai_confirmation_keywords(cls, value: Any) -> str:
-        """兼容旧版列表形式的 AI 判定触发关键词"""
+        """归一化 AI 判定触发关键词文本"""
 
-        if isinstance(value, list):
-            return ", ".join(str(item).strip() for item in value if str(item).strip())
         if value is None:
             return default_sleep_related_keywords_text()
         return str(value)
@@ -124,11 +122,6 @@ class IdleSleepConfig(PluginConfigBase):
     mention_extends_grace: bool = Field(default=True, description="被提及时延长临睡前判断缓冲")
     at_extends_grace: bool = Field(default=True, description="被 @ 时延长临睡前判断缓冲")
     wake_on_mention_while_sleeping: bool = Field(default=False, description="睡眠期间被提及或 @ 时是否自动唤醒")
-    inbound_grace_seconds: int = Field(default=180, description="兼容旧配置；请改用 topic_grace_seconds")
-    count_inbound_messages_as_activity: bool = Field(
-        default=False,
-        description="兼容旧配置；入站消息始终只用于完全安静计时，不再影响无参与计时",
-    )
     count_planner_actions_as_activity: bool = Field(
         default=True,
         description="是否把 Planner 的有效动作视为 Bot 参与；no_action/finish/wait/continue 不会刷新无参与计时",

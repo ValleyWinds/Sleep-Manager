@@ -9,7 +9,6 @@ import json
 from .state import SleepRecord
 
 PERSISTENCE_VERSION = 2
-GLOBAL_SCOPE_KEY = "global"
 STATE_FILENAME = "sleep_state.json"
 
 _data_dir: Path | None = None
@@ -58,8 +57,8 @@ def load_persisted_sleep_records() -> Dict[str, SleepRecord]:
     if isinstance(raw_records, dict):
         return _load_records_from_mapping(raw_records)
 
-    legacy_record = _load_legacy_record(raw_data)
-    return {legacy_record.scope_key: legacy_record} if legacy_record is not None else {}
+    # v1 旧格式（无 sleep_records 键）已放弃兼容，按空状态处理
+    return {}
 
 
 def save_persisted_sleep_records(sleep_records: Dict[str, SleepRecord]) -> None:
@@ -129,20 +128,6 @@ def _load_records_from_mapping(raw_records: dict[Any, Any]) -> Dict[str, SleepRe
         if record is not None:
             records[record.scope_key] = record
     return records
-
-
-def _load_legacy_record(raw_data: dict[str, Any]) -> SleepRecord | None:
-    """兼容读取 v1 的单一全局睡眠状态"""
-
-    return _build_record(
-        scope_key=GLOBAL_SCOPE_KEY,
-        scope_label="全局配置",
-        group_id="",
-        session_id="",
-        sleep_started_at_raw=raw_data.get("sleep_started_at"),
-        sleep_until_raw=raw_data.get("sleep_until"),
-        sleep_reason_raw=raw_data.get("sleep_reason"),
-    )
 
 
 def _build_record(

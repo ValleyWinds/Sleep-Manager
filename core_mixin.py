@@ -898,11 +898,6 @@ class SleepCoreMixin:
         if enabled:
             self._get_logger().info(message)
 
-    def _looks_like_sleep_request(self, text: str, message: dict[str, Any]) -> bool:
-        """判断用户消息是否像是在让 Bot 睡觉"""
-
-        return looks_like_sleep_request(text, message, self.config.sleep_request, logger=self._get_logger())
-
     def _choose_sleep_until(self, now: datetime, message: dict[str, Any] | None = None) -> datetime:
         """根据当前时间和配置决定本次睡到什么时候"""
 

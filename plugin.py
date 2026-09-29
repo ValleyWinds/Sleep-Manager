@@ -16,8 +16,7 @@ from .state_storage import set_data_dir
 def _setup_plugin_data_dir(ctx: Any) -> None:
     """把 SDK 提供的数据目录注入持久化模块"""
 
-    paths = getattr(ctx, "paths", None)
-    set_data_dir(getattr(paths, "data_dir", "") if paths is not None else "")
+    set_data_dir(ctx.paths.data_dir)
 
 
 class GoodnightSleepManagerPlugin(
