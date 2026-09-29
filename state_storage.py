@@ -11,8 +11,6 @@ from .state import SleepRecord
 PERSISTENCE_VERSION = 2
 GLOBAL_SCOPE_KEY = "global"
 STATE_FILENAME = "sleep_state.json"
-# 未注入数据目录时的回退目录（与上游行为保持一致）
-FALLBACK_PLUGIN_DIR_NAME = "goodnight_sleep_manager"
 
 _data_dir: Path | None = None
 
@@ -26,11 +24,17 @@ def set_data_dir(data_dir: Path | str | None) -> None:
 
 
 def get_plugin_data_dir() -> Path:
-    """返回插件数据目录；未注入时退回上游旧路径，保证脱离宿主也能工作"""
+    """返回插件数据目录
 
-    if _data_dir is not None:
-        return _data_dir
-    return Path(__file__).resolve().parents[2] / "data" / "plugins" / FALLBACK_PLUGIN_DIR_NAME
+    数据目录由插件加载时注入（来自 ctx.paths.data_dir，需 SDK >= 2.6.0）。
+    本插件不再对上游旧版本做任何数据目录兼容回退：未注入即视为环境异常。
+    """
+
+    if _data_dir is None:
+        raise RuntimeError(
+            "插件数据目录未注入：请确认插件 SDK >= 2.6.0，且 Runner 已注入 ctx.paths"
+        )
+    return _data_dir
 
 
 def get_sleep_state_path() -> Path:

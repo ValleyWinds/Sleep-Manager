@@ -11,13 +11,15 @@
 | 项目 | 要求 |
 | --- | --- |
 | 主程序 `host_application` | `>= 1.0.0`，`<= 1.9.0` |
-| 插件 SDK | `>= 2.4.0`，`<= 2.99.99` |
+| 插件 SDK | `>= 2.6.0`，`<= 2.99.99` |
 | 第三方依赖 | 无 |
 | 声明能力 | `send.text` / `llm.generate` / `config.get` |
 
 上游 v1.1.3 的清单把主程序版本上限固定在 `1.0.0`，主程序高于该版本时插件会被判定不兼容而无法加载；本仓库已将该上限放开到 `1.9.0`。
 
 当前版本已在 **MaiBot 1.2.5 + 插件 SDK 2.8.2** 上逐项核对通过（Hook 载荷字段、配置校验、命令分发、Context Item 协议）。
+
+**本插件不兼容上游旧版本的数据**：睡眠状态与回顾记录不读取、不迁移旧目录，安装后从全新状态开始；也因此对插件 SDK 的要求提升到 `>= 2.6.0`（数据目录依赖 `ctx.paths`）。
 
 ## 安装
 
@@ -26,7 +28,7 @@ cd <你的 MaiBot 目录>/plugins
 git clone https://github.com/ValleyWinds/Sleep-Manager.git goodnight_sleep_manager
 ```
 
-目录名建议保持 `goodnight_sleep_manager`：插件目录名变了会重新生成 `config.toml`，已有配置无法沿用。睡眠状态等数据存放在主程序的 `data/plugins/<插件 ID>/` 下，与目录名无关。后续更新在插件目录内 `git pull` 即可。
+目录名随意（建议与仓库同名 `Sleep-Manager`）。注意 `config.toml` 存放在插件目录内，目录名变了会重新生成配置。睡眠状态等数据存放在主程序的 `data/plugins/<插件 ID>/` 下，与目录名无关。后续更新在插件目录内 `git pull` 即可。
 
 ## 核心行为
 
@@ -66,7 +68,7 @@ AI 判定模板会在插件加载时同步到主程序 Prompt 目录，文件名
 
 `data/plugins/<插件 ID>/sleep_state.json`
 
-插件 ID 见 `_manifest.json` 的 `id` 字段（当前为 `ValleyWinds.sleep-manager`），数据目录按此 ID 计算。**从上游版本或旧 ID 升级时不会自动迁移数据**——如果需要保留旧状态与回顾记录，请手动把旧目录（`data/plugins/goodnight_sleep_manager/`，或曾用 ID 目录 `data/plugins/local.goodnight-sleep-manager/`）里的内容拷到 `data/plugins/ValleyWinds.sleep-manager/`。
+插件 ID 见 `_manifest.json` 的 `id` 字段（当前为 `next.sleep-manager`）。本插件不读取、不迁移任何旧版本目录（如 `data/plugins/goodnight_sleep_manager/`），安装后从全新状态开始；如需保留旧回顾记录，请自行手动拷贝到 `data/plugins/next.sleep-manager/sleep_review/`。
 
 如果 MaiBot、插件 Runner 或插件本身在睡眠期间重启，插件加载时会恢复尚未过期的睡眠状态。预计醒来时间已过时会自动清理。手动 `/sleep_wake`、`/sleep_wake_all` 或自然到点唤醒也会清理对应作用域。
 
