@@ -179,7 +179,7 @@ class SleepControlConfig(PluginConfigBase):
         default=True,
         description="允许 /sleep_now、/sleep_force 和 /sleep_force_all 管理命令",
     )
-    admin_user_ids: List[str] = Field(default_factory=list, description="允许使用管理入睡命令的用户 ID；留空时不限制")
+    admin_user_ids: List[str] = Field(default_factory=list, description="允许使用管理入睡命令的用户 ID；留空时管理命令对所有人不可用（默认安全），需填写至少一个用户 ID 才能启用")
 
 
 class SleepReviewConfig(PluginConfigBase):

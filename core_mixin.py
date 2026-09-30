@@ -1086,11 +1086,15 @@ class SleepCoreMixin:
         return message
 
     def _can_use_force_sleep_command(self, user_id: str) -> bool:
-        """判断用户是否允许使用强制入睡类命令"""
+        """判断用户是否允许使用强制入睡类命令
+
+        管理员 ID 列表为空时，管理命令对所有人不可用（默认安全）。
+        需要开放时，在配置里填写允许使用的用户 ID。
+        """
 
         allowed_user_ids = [item.strip() for item in self.config.control.admin_user_ids if item.strip()]
         if not allowed_user_ids:
-            return True
+            return False
         return user_id.strip() in allowed_user_ids
 
     def _control_command_names(self) -> set[str]:

@@ -176,7 +176,7 @@ FIELD_HINTS: dict[tuple[str, str], LocalizedText] = {
         "zh_CN": "开启后允许使用 /sleep_now 引导入睡，或使用 /sleep_force、/sleep_force_all 强制入睡",
     },
     ("control", "admin_user_ids"): {
-        "zh_CN": "填写后只有这些用户 ID 可使用 /sleep_now、/sleep_force 和 /sleep_force_all；留空则不限制",
+        "zh_CN": "填写后只有这些用户 ID 可使用 /sleep_now、/sleep_force 和 /sleep_force_all；留空时管理命令对所有人不可用（默认安全），需填写至少一个用户 ID 才能启用",
     },
     ("sleep_review", "enabled"): {
         "zh_CN": "开启后，睡眠期间被拦截的消息会保存到本地；对应作用域醒来时按群聊/私聊生成回顾文件，不会向聊天流补发回复",
